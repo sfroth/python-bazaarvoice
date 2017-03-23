@@ -1,4 +1,4 @@
-import os, re, datetime, urllib2
+import os, re, datetime, urllib
 
 class BV:
 
@@ -42,7 +42,7 @@ class BV:
         self.INCLUDE_DISPLAY_INTEGRATION_CODE = include_display_integration_code
 
     # define getter method
-    def getSeo(self, cache_enabled=True, withDisplay=True):
+    def getSeo(self, cache_enabled=True, withDisplay=False):
         if withDisplay or self.INCLUDE_DISPLAY_INTEGRATION_CODE:
             return '%s%s' % (self.seo(cache_enabled=cache_enabled), self.inject_js())
         return self.seo(cache_enabled=cache_enabled)
@@ -88,7 +88,7 @@ class BV:
         if isinstance(self.QUERY_STRING, dict):
             query = self.QUERY_STRING
         else:
-            raise ValueError, "Query string data must be passed as a dictionary object."
+            raise ValueError("Query string data must be passed as a dictionary object.")
 
         page_number = self.getPageNumber(query)
         bv_reveal   = query.get('bvreveal', None)
@@ -120,7 +120,7 @@ class BV:
                 endpoint_domain = 'seo.bazaarvoice.com'
 
             # prepare request time variable
-            request_time = 0;
+            request_time = 0
             # prepare request URL
             request_url = 'http://%s/%s/%s/%s/%s/%s/%s.htm' % (
                 endpoint_domain,
@@ -129,7 +129,7 @@ class BV:
                 self.BV_PRODUCT,
                 self.PRODUCT_OR_CATEGORY,
                 page_number,
-                self.PRODUCT_ID )
+                self.PRODUCT_ID)
 
             # prepare to catch exceptions
             try:
@@ -137,7 +137,7 @@ class BV:
                 # identify time before initiating request
                 connect_start_time = datetime.datetime.now()
                 # initiate request
-                response_object = urllib2.urlopen(request_url, timeout=(float(self.TIMEOUT_MS) / 1000))
+                response_object = urllib.urlopen(request_url, timeout=(float(self.TIMEOUT_MS) / 1000))
                 # read request response
                 response_data = response_object.read()
                 # identify elapsed time since request was initiated
@@ -167,11 +167,11 @@ class BV:
                 self.msgBuffer(self.msg_output('timer {0}'.format(request_time)))
 
             # catch HTTP exceptions, such as 403's, 500's, etc.
-            except urllib2.HTTPError, e:
+            except urllib.error.HTTPError as e:
                 # update output variable
                 self.msgBuffer(self.msg_output('no SEO file; server returned {0}'.format(str(e))))
                 return self.getMessagesFromBuffer()
-            except urllib2.URLError, e:
+            except urllib.error.HTTPError as e:
                 # did we not get a response within the time window?
                 if '[errno 36]' in str(e.reason).lower():
                     self.msgBuffer(self.msg_output('no SEO file; request timeout'))
@@ -183,7 +183,7 @@ class BV:
                 else:
                     # go to next Exception block
                     raise
-            except Exception, e:
+            except Exception as e:
                 # return canned response for errors
                 self.msgBuffer(self.msg_output('no SEO file'))
                 return self.getMessagesFromBuffer()
