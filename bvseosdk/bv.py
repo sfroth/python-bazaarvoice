@@ -3,7 +3,7 @@ import os, re, datetime, urllib
 class BV:
 
     seo_contents    = ''
-    SDK_VERSION     = '1.0'
+    SDK_VERSION  = '1.0'
     message_buffer  = ''
 
     def __init__(
@@ -25,31 +25,51 @@ class BV:
             cache_enabled = True
         ):
 
-        self.PRODUCT_ID             = product_id
-        self.DEPLOYMENT_ZONE_ID     = deployment_zone_id
-        self.BV_PRODUCT             = bv_product
-        self.PAGE_URL               = page_url
+        self.PRODUCT_ID          = product_id
+        self.DEPLOYMENT_ZONE_ID  = deployment_zone_id
+        self.BV_PRODUCT          = bv_product
+        self.PAGE_URL              = page_url
         self.PRODUCT_OR_CATEGORY    = product_or_category
-        self.CLOUD_KEY              = cloud_key
+        self.CLOUD_KEY            = cloud_key
         self.STAGING                = staging
-        self.TIMEOUT_MS             = timeout_ms
-        self.USER_AGENT             = user_agent
-        self.INTERNAL_FILE_PATH     = internal_file_path
-        self.BOT_REGEX_STRING       = re.compile(bot_regex_string, re.I)
-        self.BOT_DETECT             = bot_detection
-        self.QUERY_STRING           = current_request_query_string
-        self.seo_contents           = self.seo(cache_enabled=cache_enabled)
+        self.TIMEOUT_MS          = timeout_ms
+        self.USER_AGENT          = user_agent
+        self.INTERNAL_FILE_PATH  = internal_file_path
+        self.BOT_REGEX_STRING      = re.compile(bot_regex_string, re.I)
+        self.BOT_DETECT          = bot_detection
+        self.QUERY_STRING          = current_request_query_string
         self.INCLUDE_DISPLAY_INTEGRATION_CODE = include_display_integration_code
+        self.seo(cache_enabled=cache_enabled)
 
-    # define getter method
-    def getSeo(self, cache_enabled=True, withDisplay=False):
-        if withDisplay or self.INCLUDE_DISPLAY_INTEGRATION_CODE:
-            return '%s%s' % (self.seo(cache_enabled=cache_enabled), self.inject_js())
-        return self.seo(cache_enabled=cache_enabled)
+    def pullSection(self, search_str):
+        result = ''
+        if not self.seo_contents:
+            return ''
 
-    # convenience function
-    def getSeoWithDisplay(self):
-        return self.getSeo(withDisplay=True)
+        search_str_begin = '<!--begin-{}-->'.format(search_str)
+        search_str_end = '<!--end-{}-->'.format(search_str)
+        start_index = self.seo_contents.find(search_str_begin) + len(search_str_begin)
+        if start_index != -1:
+            end_index = self.seo_contents.find(search_str_end, start_index)
+            if end_index != -1:
+                result = self.seo_contents[start_index:end_index]
+        return result
+
+    def renderRatings(self):
+        if not self.seo_contents:
+            self.seo()
+        result = self.pullSection('reviews')
+        result += self.pullSection('pagination')
+        return result
+
+    def renderAggregate(self):
+        if not self.seo_contents:
+            self.seo()
+        result = self.pullSection('aggregate-rating')
+        return result
+
+    def renderInject(self):
+        return '%s%s' % (self.seo(), self.inject_js())
 
     # get page number using query dictionary object
     def getPageNumber(self, query):
@@ -82,7 +102,7 @@ class BV:
     def seo(self, cache_enabled=True):
 
         if self.seo_contents != '' and cache_enabled is True:
-            return self.seo_contents
+            return self.getMessagesFromBuffer()
 
         # parse query string
         if isinstance(self.QUERY_STRING, dict):
@@ -137,7 +157,7 @@ class BV:
                 # identify time before initiating request
                 connect_start_time = datetime.datetime.now()
                 # initiate request
-                response_object = urllib.urlopen(request_url, timeout=(float(self.TIMEOUT_MS) / 1000))
+                response_object = urllib.request.urlopen(request_url, timeout=(float(self.TIMEOUT_MS) / 1000))
                 # read request response
                 response_data = response_object.read()
                 # identify elapsed time since request was initiated
@@ -145,10 +165,10 @@ class BV:
                 # convert result to milliseconds
                 request_time = request_time.microseconds / 1000
                 # save response data from request to output variable
-                seo_contents = response_data
+                self.seo_contents = response_data.decode('utf-8')
 
                 # if response data was empty, return error
-                if not seo_contents:
+                if not self.seo_contents:
                     self.msgBuffer(self.msg_output('no SEO file'))
                     return self.getMessagesFromBuffer()
 
@@ -162,7 +182,7 @@ class BV:
                     page_url_query_prefix = '?'
 
                 # replace token in response with correct endpoint
-                seo_contents = seo_contents.replace('{INSERT_PAGE_URI}', self.PAGE_URL + page_url_query_prefix)
+                self.seo_contents = self.seo_contents.replace('{INSERT_PAGE_URI}', self.PAGE_URL + page_url_query_prefix)
                 # add bvtimer code
                 self.msgBuffer(self.msg_output('timer {0}'.format(request_time)))
 
@@ -191,9 +211,6 @@ class BV:
         else:
             self.msgBuffer(self.msg_output('JavaScript-only display'))
             return self.getMessagesFromBuffer()
-
-        if seo_contents:
-            self.msgBuffer(seo_contents)
 
         return self.getMessagesFromBuffer()
 
